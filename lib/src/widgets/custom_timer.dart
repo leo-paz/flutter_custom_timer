@@ -68,26 +68,23 @@ class _CustomTimerState extends State<CustomTimer>
     with TickerProviderStateMixin {
   late CustomTimerController _controller;
   late AnimationController _animationController;
+  late bool _controllerDisposable;
   late Animation<int> _animation;
 
   late bool stateBuilder;
 
   @override
   void initState() {
-    _controller = widget.controller ?? CustomTimerController();
-    _controller.addListener(updateAnimationController);
-
-    final Duration _begin = widget.begin;
-    final Duration _end = widget.end;
-    final Duration _animationDuration;
-
-    if (_begin > _end)
-      _animationDuration = _begin - _end;
-    else
-      _animationDuration = _end - _begin;
+    _controllerDisposable = widget.controller == null;
+    _controller = widget.controller ??
+        CustomTimerController(
+          begin: widget.begin,
+          end: widget.end,
+        );
 
     _animationController =
-        AnimationController(duration: _animationDuration, vsync: this);
+        AnimationController(duration: _controller.duration, vsync: this);
+    _controller.addListener(updateAnimationController);
 
     final CurvedAnimation curvedAnimation =
         CurvedAnimation(parent: _animationController, curve: Curves.linear);
@@ -125,15 +122,13 @@ class _CustomTimerState extends State<CustomTimer>
   }
 
   void updateController(AnimationStatus status) {
-    if (status == AnimationStatus.forward)
-      _controller.start(disableNotifyListeners: true);
-    else if (status == AnimationStatus.completed) _controller.finish();
+    if (status == AnimationStatus.completed) _controller.finish();
   }
 
   @override
   void dispose() {
     _controller.removeListener(updateAnimationController);
-    _controller.dispose();
+    if (_controllerDisposable) _controller.dispose();
 
     _animationController.removeStatusListener(updateController);
     _animationController.dispose();
@@ -145,15 +140,18 @@ class _CustomTimerState extends State<CustomTimer>
     final Widget remainingBuilder = _CustomTimerAnimatedBuilder(
       animation: _animation,
       builder: widget.builder,
+      controller: _controller,
     );
 
     final Widget child = Container(
       key: Key(_controller.state.toString()),
       child: stateBuilder
           ? widget.stateBuilder!(
-                  CustomTimerRemainingTime(
-                      duration: Duration(milliseconds: _animation.value)),
-                  _controller.state) ??
+                CustomTimerRemainingTime(
+                  duration: _controller.duration,
+                ),
+                _controller.state,
+              ) ??
               remainingBuilder
           : remainingBuilder,
     );
@@ -165,14 +163,19 @@ class _CustomTimerState extends State<CustomTimer>
 }
 
 class _CustomTimerAnimatedBuilder extends AnimatedWidget {
-  const _CustomTimerAnimatedBuilder(
-      {Key? key, required this.animation, required this.builder})
-      : super(key: key, listenable: animation);
+  const _CustomTimerAnimatedBuilder({
+    Key? key,
+    required this.animation,
+    required this.builder,
+    required this.controller,
+  }) : super(key: key, listenable: animation);
 
   final Animation<int> animation;
   final Widget Function(CustomTimerRemainingTime) builder;
+  final CustomTimerController controller;
 
   @override
   Widget build(BuildContext context) => builder(CustomTimerRemainingTime(
-      duration: Duration(milliseconds: animation.value)));
+        duration: controller.duration,
+      ));
 }

@@ -9,7 +9,10 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  final CustomTimerController _controller = CustomTimerController();
+  final CustomTimerController _controller = CustomTimerController(
+    begin: Duration(days: 1),
+    end: Duration(),
+  );
 
   @override
   void dispose() {
@@ -54,7 +57,8 @@ class _MyAppState extends State<MyApp> {
                 RoundedButton(
                   text: "Reset",
                   color: Colors.red,
-                  onPressed: () => _controller.reset(),
+                  onPressed: () =>
+                      _controller.reset(duration: Duration(days: 1)),
                 )
               ],
             )

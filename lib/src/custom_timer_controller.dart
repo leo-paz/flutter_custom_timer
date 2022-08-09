@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 /// State for CustomTimer.
@@ -5,53 +6,87 @@ enum CustomTimerState { reset, paused, counting, finished }
 
 class CustomTimerController extends ChangeNotifier {
   /// Controller for CustomTimer.
-  CustomTimerController({this.initialState = CustomTimerState.reset});
+  CustomTimerController({
+    required Duration begin,
+    required Duration end,
+    this.initialState = CustomTimerState.reset,
+  }) {
+    _duration = getDuration(begin, end);
+    _begin = begin;
+    _end = end;
+  }
+
+  Timer? countdownTimer;
+  late Duration _duration;
 
   /// Defines the initial state of the timer. By default it is `CustomTimerState.reset`
   final CustomTimerState initialState;
+
+  /// The start of the timer.
+  late Duration _begin;
+
+  /// The end of the timer.
+  late Duration _end;
 
   late CustomTimerState _state = initialState;
 
   /// Current state of the timer.
   CustomTimerState get state => _state;
 
-  /// Timer pause function.
+  /// Current duration of the timer.
+  Duration get duration => _duration;
+
+  /// Set duration of the timer.
+  set duration(Duration value) {
+    _duration = value;
+    notifyListeners();
+  }
+
+  Duration getDuration(Duration begin, Duration end) {
+    if (begin > end) {
+      return begin - end;
+    } else {
+      return end - begin;
+    }
+  }
+
+  /// Timer related methods ///
+  void start() {
+    countdownTimer =
+        Timer.periodic(Duration(seconds: 1), (_) => setCountDown());
+    _state = CustomTimerState.counting;
+    notifyListeners();
+  }
+
   void pause() {
-    if (!_disposed) {
-      _state = CustomTimerState.paused;
-      notifyListeners();
-    }
+    countdownTimer!.cancel();
+    _state = CustomTimerState.paused;
+    notifyListeners();
   }
 
-  /// Timer start function.
-  void start({bool disableNotifyListeners = false}) {
-    if (!_disposed) {
-      _state = CustomTimerState.counting;
-      if (!disableNotifyListeners) notifyListeners();
-    }
+  /// Reset the timer to the initial state or to a new duration
+  void reset({Duration? duration}) {
+    if (countdownTimer != null) pause();
+    _duration = duration ?? getDuration(_begin, _end);
+    _state = CustomTimerState.reset;
+    notifyListeners();
   }
 
-  /// Timer reset function.
-  void reset() {
-    if (!_disposed) {
-      _state = CustomTimerState.reset;
-      notifyListeners();
-    }
-  }
-
-  /// Timer finish function.
   void finish() {
-    if (!_disposed) {
-      _state = CustomTimerState.finished;
-      notifyListeners();
-    }
+    _state = CustomTimerState.finished;
+    notifyListeners();
   }
 
-  bool _disposed = false;
+  void setCountDown() {
+    final reduceSecondsBy = 1;
 
-  @override
-  void dispose() {
-    _disposed = true;
-    super.dispose();
+    final seconds = _duration.inSeconds - reduceSecondsBy;
+    if (seconds < 0) {
+      countdownTimer!.cancel();
+      _state = CustomTimerState.finished;
+    } else {
+      _duration = Duration(seconds: seconds);
+    }
+    notifyListeners();
   }
 }
