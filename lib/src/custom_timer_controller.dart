@@ -10,6 +10,7 @@ class CustomTimerController extends ChangeNotifier {
     required Duration begin,
     required Duration end,
     this.initialState = CustomTimerState.reset,
+    this.onEnd,
   }) {
     _duration = getDuration(begin, end);
     _begin = begin;
@@ -27,6 +28,9 @@ class CustomTimerController extends ChangeNotifier {
 
   /// The end of the timer.
   late Duration _end;
+
+  /// Called when the timer reaches the end.
+  VoidCallback? onEnd;
 
   late CustomTimerState _state = initialState;
 
@@ -74,6 +78,7 @@ class CustomTimerController extends ChangeNotifier {
 
   void finish() {
     _state = CustomTimerState.finished;
+    onEnd?.call();
     notifyListeners();
   }
 
@@ -84,6 +89,7 @@ class CustomTimerController extends ChangeNotifier {
     if (seconds < 0) {
       countdownTimer!.cancel();
       _state = CustomTimerState.finished;
+      onEnd?.call();
     } else {
       _duration = Duration(seconds: seconds);
     }
